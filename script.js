@@ -4,10 +4,20 @@ const getBtn = document.getElementById("get-students-btn");
 const tableBody = document.querySelector("#students-table tbody");
 const addForm = document.getElementById("add-student-form");
 
-async function getStudents() {
-  const response = await fetch(API_URL);
-  const students = await response.json();
-  renderStudents(students);
+function getStudents() {
+  return fetch(API_URL)
+    .then((response) => {
+      if (!response.ok) throw new Error("Failed to fetch students");
+      return response.json();
+    })
+    .then((students) => {
+      renderStudents(students);
+      return students;
+    })
+    .catch((err) => {
+      console.error(err);
+      alert("Не вдалося отримати список студентів");
+    });
 }
 
 function renderStudents(students) {
@@ -19,7 +29,7 @@ function renderStudents(students) {
         <td>${student.name}</td>
         <td>${student.age}</td>
         <td>${student.course}</td>
-        <td>${student.skills.join(", ")}</td>
+        <td>${Array.isArray(student.skills) ? student.skills.join(", ") : ""}</td>
         <td>${student.email}</td>
         <td>${student.isEnrolled ? "✅" : "❌"}</td>
         <td>
@@ -32,7 +42,7 @@ function renderStudents(students) {
     .join("");
 }
 
-async function addStudent(e) {
+function addStudent(e) {
   e.preventDefault();
 
   const newStudent = {
@@ -42,39 +52,65 @@ async function addStudent(e) {
     skills: document
       .getElementById("skills")
       .value.split(",")
-      .map((s) => s.trim()),
+      .map((s) => s.trim())
+      .filter(Boolean),
     email: document.getElementById("email").value,
     isEnrolled: document.getElementById("isEnrolled").checked,
   };
 
-  await fetch(API_URL, {
+  fetch(API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(newStudent),
-  });
-
-  addForm.reset();
-  getStudents();
+  })
+    .then((response) => {
+      if (!response.ok) throw new Error("Failed to add student");
+      // якщо API повертає створений об'єкт, можна зробити return response.json();
+      return null;
+    })
+    .then(() => {
+      addForm.reset();
+      return getStudents();
+    })
+    .catch((err) => {
+      console.error(err);
+      alert("Не вдалося додати студента");
+    });
 }
 
-async function updateStudent(id) {
+function updateStudent(id) {
   const newCourse = prompt("Введіть новий курс:");
   if (!newCourse) return;
 
-  await fetch(`${API_URL}/${id}`, {
+  fetch(`${API_URL}/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ course: newCourse }),
-  });
-
-  getStudents();
+  })
+    .then((response) => {
+      if (!response.ok) throw new Error("Failed to update student");
+      return null;
+    })
+    .then(() => getStudents())
+    .catch((err) => {
+      console.error(err);
+      alert("Не вдалося оновити студента");
+    });
 }
 
-async function deleteStudent(id) {
+function deleteStudent(id) {
   if (!confirm("Ви впевнені, що хочете видалити студента?")) return;
 
-  await fetch(`${API_URL}/${id}`, { method: "DELETE" });
-  getStudents();
+  fetch(`${API_URL}/${id}`, { method: "DELETE" })
+    .then((response) => {
+      if (!response.ok) throw new Error("Failed to delete student");
+      return null;
+    })
+    .then(() => getStudents())
+    .catch((err) => {
+      console.error(err);
+      alert("Не вдалося видалити студента");
+    });
 }
 
 getBtn.addEventListener("click", getStudents);
